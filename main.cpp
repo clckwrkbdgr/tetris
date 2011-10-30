@@ -10,7 +10,7 @@
 #include "tetris.h"
 
 MainWindow::MainWindow(QWidget * parent)
-	: QWidget(parent), tetris(QSize(10, 15))
+	: QWidget(parent), tetris(QSize(10, 22))
 {
 	connect(&timer, SIGNAL(timeout()), this, SLOT(onTimer()));
 	timer.start(500);
@@ -59,21 +59,26 @@ void MainWindow::paintEvent(QPaintEvent *)
 {
 	int cellWidth = qMin(width() / tetris.cupSize().width(),
 			height() / tetris.cupSize().height());
+	QSize cupSize = cellWidth * tetris.cupSize();
+	QPoint startPos = QPoint((width() - cupSize.width()) / 2, (height() - cupSize.height()) / 2);
 
 	QPainter painter(this);
 	painter.fillRect(rect(), Qt::black);
 
+	foreach(int i, tetris.shadow()) {
+		painter.fillRect(QRect(startPos + QPoint(cellWidth * i, 0), QSize(cellWidth, cupSize.height())), qRgb(10, 10, 10));
+	}
+
 	painter.setPen(Qt::white);
-	painter.setBrush(Qt::black);
-	painter.drawRect(0, 0, cellWidth * tetris.cupSize().width(),
-			cellWidth * tetris.cupSize().height());
+	painter.setBrush(Qt::NoBrush);
+	painter.drawRect(QRect(startPos, cupSize));
 
 	painter.setPen(Qt::black);
 	painter.setBrush(Qt::white);
 	QRect cell(0, 0, cellWidth, cellWidth);
 	for(int x = 0; x < tetris.cupSize().width(); ++x) {
 		for(int y = 0; y < tetris.cupSize().height(); ++y) {
-			cell.moveTopLeft(QPoint(x * cellWidth, y * cellWidth));
+			cell.moveTopLeft(startPos + QPoint(x * cellWidth, y * cellWidth));
 			if(tetris.cell(QPoint(x, y))) {
 				painter.drawRect(cell);
 			}
@@ -98,6 +103,6 @@ int main(int argc, char ** argv)
 	qsrand(time(NULL));
 	QApplication app(argc, argv);
 	MainWindow wnd;
-	wnd.show();
+	wnd.showFullScreen();
 	return app.exec();
 }

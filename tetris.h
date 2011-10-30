@@ -28,6 +28,8 @@ public:
 	bool isValid(const QPoint & point) const;
 	int cell(const QPoint & point) const;
 
+	QVector<int> shadow() const;
+
 	bool tick();
 
 	void drop();

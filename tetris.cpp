@@ -210,7 +210,7 @@ bool Tetris::tick()
 	QPoint newPos = figurePos;
 	newPos.ry()++;
 
-	if(overlapping(newPos, currentFigure.front())) {
+	if(overlapping(newPos, currentFigure.front()) || outOfCup(newPos, currentFigure.front())) {
 		addFigure(figurePos, currentFigure.front());
 		removeFullRows();
 
@@ -224,6 +224,20 @@ bool Tetris::tick()
 
 	figurePos = newPos;
 	return true;
+}
+
+QVector<int> Tetris::shadow() const
+{
+	QVector<int> result;
+	for(int x = 0; x < Figures::WIDTH; ++x) {
+		for(int y = 0; y < Figures::HEIGHT; ++y) {
+			if(currentFigure.front()[x + y * Figures::WIDTH]) {
+				result << figurePos.x() + x;
+				break;
+			}
+		}
+	}
+	return result;
 }
 
 void Tetris::removeFullRows()
@@ -262,7 +276,7 @@ void Tetris::rotate()
 
 void Tetris::drop()
 {
-	while(!overlapping(figurePos, currentFigure.front())) {
+	while(!overlapping(figurePos, currentFigure.front()) && !outOfCup(figurePos, currentFigure.front())) {
 		figurePos.ry()++;
 	}
 	figurePos.ry()--;

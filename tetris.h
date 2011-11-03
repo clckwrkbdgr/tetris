@@ -7,32 +7,46 @@
 #include <QtCore/QPoint>
 #include <QtDebug>
 
+template<class T, std::size_t z>
+QVector<T> fromArray(const T (&array)[z])
+{
+	return QVector<T>::fromStdVector(std::vector<T>(array, array + z));
+}
+
+static QVector<QPoint> range(int width, int height) {
+	QVector<QPoint> result;
+	result.reserve(width * height);
+	QPoint pos;
+	for(; pos.x() < width; ++pos.rx()) {
+		for(pos.setY(0); pos.y() < height; ++pos.ry()) {
+			result << pos;
+		}
+	}
+	return result;
+}
+
 namespace F {
 	enum { WIDTH = 4, HEIGHT = 4, SIZE = WIDTH * HEIGHT };
-	enum Type { NONE = 0, I, J, L, O, S, T, Z, COUNT };
+	enum Type { NONE = 0, _ = 0, I, J, L, O, S, T, Z, COUNT };
 
 	struct Figure {
-		QVector<Type> figure;
+		QVector<Type> blocks;
 		QVector<int> rotateMask;
-		Type type;
 		QPoint pos;
 		
-		Figure() : figure(SIZE, NONE), rotateMask(SIZE, 0), type(NONE) {}
-		template<std::size_t z>
-		Figure(int (&f)[z], int (&mask)[z], Type fType)
-			: figure(SIZE, NONE),
-			rotateMask(QVector<int>::fromStdVector(std::vector<int>(mask, mask + SIZE))), type(fType)
-		{
-			figure.resize(SIZE);
-			for(int i = 0; i < SIZE; ++i) {
-				if(f[i])
-					figure[i] = type;
-			}
+		Figure() : blocks(SIZE, NONE), rotateMask(SIZE, 0) {}
+		Figure(Type (&f)[SIZE], int (&mask)[SIZE])
+			: blocks(fromArray(f)), rotateMask(fromArray(mask)) {}
+
+		bool isValid(const QPoint & p) const {
+			return (p.x() >= 0 && p.y() >= 0 && p.x() < WIDTH && p.y() < HEIGHT);
 		}
+		Type & at(const QPoint & p) { return blocks[p.x() + p.y() * F::WIDTH]; }
+		const Type & at(const QPoint & p) const { return blocks[p.x() + p.y() * F::WIDTH]; }
 		Figure rotated() {
 			Figure newFigure = *this;
 			for(int i = 0; i < SIZE; ++i) {
-				newFigure.figure[i] = figure[rotateMask[i]];
+				newFigure.blocks[i] = blocks[rotateMask[i]];
 			}
 			return newFigure;
 		}
@@ -57,60 +71,60 @@ namespace F {
 		12, 13, 14, 15
 	};
 
-	static int I_F[SIZE] = {
-		0, 1, 0, 0,
-		0, 1, 0, 0,
-		0, 1, 0, 0,
-		0, 1, 0, 0
+	static Type I_F[SIZE] = {
+		_, I, _, _,
+		_, I, _, _,
+		_, I, _, _,
+		_, I, _, _
 	};
-	static int J_F[SIZE] = {
-		1, 0, 0, 0,
-		1, 1, 1, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0
+	static Type J_F[SIZE] = {
+		J, _, _, _,
+		J, J, J, _,
+		_, _, _, _,
+		_, _, _, _
 	};
-	static int L_F[SIZE] = {
-		0, 0, 1, 0,
-		1, 1, 1, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0
+	static Type L_F[SIZE] = {
+		_, _, L, _,
+		L, L, L, _,
+		_, _, _, _,
+		_, _, _, _
 	};
-	static int O_F[SIZE] = {
-		0, 0, 0, 0,
-		0, 1, 1, 0,
-		0, 1, 1, 0,
-		0, 0, 0, 0
+	static Type O_F[SIZE] = {
+		_, _, _, _,
+		_, O, O, _,
+		_, O, O, _,
+		_, _, _, _
 	};
-	static int S_F[SIZE] = {
-		0, 1, 1, 0,
-		1, 1, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0
+	static Type S_F[SIZE] = {
+		_, S, S, _,
+		S, S, _, _,
+		_, _, _, _,
+		_, _, _, _
 	};
-	static int T_F[SIZE] = {
-		0, 1, 0, 0,
-		1, 1, 1, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0
+	static Type T_F[SIZE] = {
+		_, T, _, _,
+		T, T, T, _,
+		_, _, _, _,
+		_, _, _, _
 	};
-	static int Z_F[SIZE] = {
-		1, 1, 0, 0,
-		0, 1, 1, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0
+	static Type Z_F[SIZE] = {
+		Z, Z, _, _,
+		_, Z, Z, _,
+		_, _, _, _,
+		_, _, _, _
 	};
 
 	typedef std::map<Type, Figure> map_type;
 	typedef map_type::value_type pair_type;
 	template<typename T, std::size_t z> std::size_t size(T const (&)[z]) { return z; }
 	static pair_type initializers[] = {
-		pair_type(I, Figure(I_F, I_MASK, I)),
-		pair_type(J, Figure(J_F, J_MASK, J)),
-		pair_type(L, Figure(L_F, J_MASK, L)),
-		pair_type(O, Figure(O_F, O_MASK, O)),
-		pair_type(S, Figure(S_F, J_MASK, S)),
-		pair_type(T, Figure(T_F, J_MASK, T)),
-		pair_type(Z, Figure(Z_F, J_MASK, Z))
+		pair_type(I, Figure(I_F, I_MASK)),
+		pair_type(J, Figure(J_F, J_MASK)),
+		pair_type(L, Figure(L_F, J_MASK)),
+		pair_type(O, Figure(O_F, O_MASK)),
+		pair_type(S, Figure(S_F, J_MASK)),
+		pair_type(T, Figure(T_F, J_MASK)),
+		pair_type(Z, Figure(Z_F, J_MASK))
 	};
 	static QMap<Type, Figure> figures(map_type(initializers, initializers + size(initializers)));
 }
@@ -146,12 +160,14 @@ private:
 	F::Figure figure;
 	int score;
 
-	QPoint startPoint() const;
-	F::Figure randomFigure() const;
-	bool overlapping(const QPoint & pos, const F::Figure & figure) const;
-	bool outOfCup(const QPoint & pos, const F::Figure & figure) const;
+	F::Type & at(const QPoint & p) { return cup[p.x() + p.y() * size.width()]; }
+	const F::Type & at(const QPoint & p) const { return cup[p.x() + p.y() * size.width()]; }
 
-	void addFigure(const QPoint & pos, const F::Figure & figure);
+	QPoint startPoint() const;
+	F::Figure randomFigure(const QPoint & pos) const;
+	bool overlapping(const F::Figure & figure) const;
+
+	void addFigure(const F::Figure & figure);
 	void removeFullRows();
 };
 

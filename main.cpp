@@ -5,6 +5,7 @@
 #include <QtGui/QMessageBox>
 #include <QtGui/QWidget>
 #include <QtDebug>
+#include <time.h>
 
 #include "main.h"
 #include "tetris.h"

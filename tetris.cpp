@@ -6,8 +6,7 @@ Tetris::Tetris(const QSize & newSize)
 	: size(newSize), cup(size.width() * size.height(), F::NONE),
 	score(0)
 {
-	figure = randomFigure();
-	figure.pos = startPoint();
+	figure = randomFigure(startPoint());
 }
 
 bool Tetris::isValid(const QPoint & point) const
@@ -18,52 +17,33 @@ bool Tetris::isValid(const QPoint & point) const
 
 F::Type Tetris::cell(const QPoint & point) const
 {
-	if(isValid(point)) {
-		QPoint relFigurePos = point - figure.pos;
-		F::Type figureValue = F::NONE;
-		if(0 <= relFigurePos.x() && relFigurePos.x() < F::WIDTH)
-			if(0 <= relFigurePos.y() && relFigurePos.y() < F::HEIGHT ) {
-				figureValue = figure.figure[relFigurePos.x() +
-					relFigurePos.y() * F::WIDTH];
-			}
-		if(figureValue)
-			return figureValue;
-		else 
-			return cup[point.x() + point.y() * size.width()];
+	if(!isValid(point)) return F::NONE;
+	QPoint relFigurePos = point - figure.pos;
+	if(figure.isValid(relFigurePos) && !at(point)) {
+		return figure.at(relFigurePos);
 	}
-	return F::NONE;
+	return at(point);
 }
 
 bool Tetris::tick()
 {
-	QPoint newPos = figure.pos;
-	newPos.ry()++;
+	figure.pos.ry()++;
+	if(!overlapping(figure)) return true;
 
-	if(overlapping(newPos, figure) || outOfCup(newPos, figure)) {
-		addFigure(figure.pos, figure);
-		removeFullRows();
+	figure.pos.ry()--;
+	addFigure(figure);
+	removeFullRows();
 
-
-		figure = randomFigure();
-		figure.pos = startPoint();
-		if(overlapping(figure.pos, figure))
-			return false;
-		return true;
-	}
-
-	figure.pos = newPos;
-	return true;
+	figure = randomFigure(startPoint());
+	return !overlapping(figure);
 }
 
 QVector<int> Tetris::shadow() const
 {
 	QVector<int> result;
-	for(int x = 0; x < F::WIDTH; ++x) {
-		for(int y = 0; y < F::HEIGHT; ++y) {
-			if(figure.figure[x + y * F::WIDTH]) {
-				result << figure.pos.x() + x;
-				break;
-			}
+	foreach(QPoint pos, range(F::WIDTH, F::HEIGHT)) {
+		if(figure.at(pos)) {
+			result << figure.pos.x() + pos.x();
 		}
 	}
 	return result;
@@ -71,23 +51,24 @@ QVector<int> Tetris::shadow() const
 
 void Tetris::removeFullRows()
 {
-	for(int y = size.height() - 1; y >= 0; --y) {
+	QPoint pos(0, size.height() - 1);
+	for(; pos.y() >= 0; --pos.ry()) {
 		int blockCount = 0;
-		for(int x = 0; x < size.width(); ++x) {
-			if(cup[x + y * size.width()]) {
+		for(pos.setX(0); pos.x() < size.width(); ++pos.rx()) {
+			if(at(pos)) {
 				++blockCount;
 			}
 		}
 
 		if(blockCount == size.width()) {
-			for(int ty = y; ty > 0; --ty) {
-				for(int x = 0; x < size.width(); ++x) {
-					cup[x + ty * size.width()] = 
-						cup[x + (ty - 1) * size.width()];
+			QPoint tp(0, pos.y());
+			for(; tp.y() > 0; --tp.ry()) {
+				for(tp.setX(0); tp.x() < size.width(); ++tp.rx()) {
+					at(tp) = at(tp - QPoint(0, 1));
 				}
 			}
 			++score;
-			++y;
+			++pos.ry();
 		}
 	}
 }
@@ -95,15 +76,14 @@ void Tetris::removeFullRows()
 void Tetris::rotate()
 {
 	F::Figure newFigure = figure.rotated();
-		if(!outOfCup(newFigure.pos, newFigure) && !overlapping(newFigure.pos, newFigure)) {
-			figure = newFigure;
-			return;
-		}
+	if(!overlapping(newFigure)) {
+		figure = newFigure;
+	}
 }
 
 void Tetris::drop()
 {
-	while(!overlapping(figure.pos, figure) && !outOfCup(figure.pos, figure)) {
+	while(!overlapping(figure)) {
 		figure.pos.ry()++;
 	}
 	figure.pos.ry()--;
@@ -111,22 +91,18 @@ void Tetris::drop()
 
 void Tetris::left()
 {
-	QPoint newPos = figure.pos;
-	newPos.rx()--;
-	if(outOfCup(newPos, figure) || overlapping(newPos, figure))
-		return;
-
-	figure.pos = newPos;
+	figure.pos.rx()--;
+	if(overlapping(figure)) {
+		figure.pos.rx()++;
+	}
 }
 
 void Tetris::right()
 {
-	QPoint newPos = figure.pos;
-	newPos.rx()++;
-	if(outOfCup(newPos, figure) || overlapping(newPos, figure))
-		return;
-
-	figure.pos = newPos;
+	figure.pos.rx()++;
+	if(overlapping(figure)) {
+		figure.pos.rx()--;
+	}
 }
 
 QPoint Tetris::startPoint() const
@@ -134,18 +110,19 @@ QPoint Tetris::startPoint() const
 	return QPoint(size.width() / 2 - F::WIDTH / 2, 0);
 }
 
-F::Figure Tetris::randomFigure() const
+F::Figure Tetris::randomFigure(const QPoint & pos) const
 {
-	return F::figures[F::Type(qrand() % (F::COUNT - 1) + 1)];
+	F::Figure f = F::figures.values().at(qrand() % F::figures.size());
+	f.pos = pos;
+	return f;
 }
 
-bool Tetris::overlapping(const QPoint & pos, const F::Figure & figure) const
+bool Tetris::overlapping(const F::Figure & figure) const
 {
-	for(int x = 0; x < F::WIDTH; ++x) {
-		for(int y = 0; y < F::HEIGHT; ++y) {
-			QPoint cupPos = pos + QPoint(x, y);
-			if(cup[cupPos.x() + cupPos.y() * size.width()] &&
-					figure.figure[x + y * F::WIDTH]) {
+	foreach(QPoint pos, range(F::WIDTH, F::HEIGHT)) {
+		if(figure.at(pos)) {
+			QPoint cupPos = figure.pos + pos;
+			if(!isValid(cupPos) || at(cupPos)) {
 				return true;
 			}
 		}
@@ -153,27 +130,12 @@ bool Tetris::overlapping(const QPoint & pos, const F::Figure & figure) const
 	return false;
 }
 
-bool Tetris::outOfCup(const QPoint & pos, const F::Figure & figure) const
+void Tetris::addFigure(const F::Figure & figure)
 {
-	for(int x = 0; x < F::WIDTH; ++x) {
-		for(int y = 0; y < F::HEIGHT; ++y) {
-			if(figure.figure[x + y * F::WIDTH] && !isValid(pos + QPoint(x, y))) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-void Tetris::addFigure(const QPoint & pos, const F::Figure & figure)
-{
-	for(int x = 0; x < F::WIDTH; ++x) {
-		for(int y = 0; y < F::HEIGHT; ++y) {
-			QPoint cupPos = pos + QPoint(x, y);
-			if(figure.figure[x + y * F::WIDTH] && isValid(pos + QPoint(x, y))) {
-				cup[cupPos.x() + cupPos.y() * size.width()] =
-					figure.figure[x + y * F::WIDTH];
-			}
+	foreach(QPoint pos, range(F::WIDTH, F::HEIGHT)) {
+		QPoint cupPos = figure.pos + pos;
+		if(figure.at(pos) && isValid(cupPos)) {
+			at(cupPos) = figure.at(pos);
 		}
 	}
 }

@@ -7,6 +7,7 @@ Tetris::Tetris(const QSize & newSize)
 	score(0)
 {
 	figure = randomFigure(startPoint());
+	nextFigure = randomFigure(startPoint());
 }
 
 bool Tetris::isValid(const QPoint & point) const
@@ -34,7 +35,9 @@ bool Tetris::tick()
 	addFigure(figure);
 	removeFullRows();
 
-	figure = randomFigure(startPoint());
+	figure = nextFigure;
+	nextFigure = randomFigure(startPoint());
+	//figure = randomFigure(startPoint());
 	return !overlapping(figure);
 }
 

@@ -143,6 +143,8 @@ public:
 
 	QVector<int> shadow() const;
 
+	const F::Figure & next() const { return nextFigure; }
+
 	bool tick();
 
 	void drop();
@@ -157,7 +159,7 @@ private:
 
 	QSize size;
 	Cup cup;
-	F::Figure figure;
+	F::Figure figure, nextFigure;
 	int score;
 
 	F::Type & at(const QPoint & p) { return cup[p.x() + p.y() * size.width()]; }

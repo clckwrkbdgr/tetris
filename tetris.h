@@ -142,8 +142,8 @@ public:
 	F::Type cell(const QPoint & point) const;
 
 	QVector<int> shadow() const;
-
 	const F::Figure & next() const { return nextFigure; }
+	int level() const { return score / ROWS_FOR_LEVEL; }
 
 	bool tick();
 
@@ -152,7 +152,6 @@ public:
 	void right();
 	void rotate();
 
-	int level() const { return score / ROWS_FOR_LEVEL; }
 private:
 	Tetris(Tetris&) {}
 	Tetris & operator=(Tetris&) {return *this;}

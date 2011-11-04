@@ -30,14 +30,12 @@ bool Tetris::tick()
 {
 	figure.pos.ry()++;
 	if(!overlapping(figure)) return true;
-
 	figure.pos.ry()--;
+
 	addFigure(figure);
-	removeFullRows();
 
 	figure = nextFigure;
 	nextFigure = randomFigure(startPoint());
-	//figure = randomFigure(startPoint());
 	return !overlapping(figure);
 }
 
@@ -90,6 +88,10 @@ void Tetris::drop()
 		figure.pos.ry()++;
 	}
 	figure.pos.ry()--;
+
+	addFigure(figure);
+	figure = nextFigure;
+	nextFigure = randomFigure(startPoint());
 }
 
 void Tetris::left()
@@ -141,5 +143,6 @@ void Tetris::addFigure(const F::Figure & figure)
 			at(cupPos) = figure.at(pos);
 		}
 	}
+	removeFullRows();
 }
 

@@ -25,6 +25,10 @@ static QVector<QPoint> range(int width, int height) {
 	return result;
 }
 
+static QVector<QPoint> range(const QSize & size) {
+	return range(size.width(), size.height());
+}
+
 namespace F {
 	enum { WIDTH = 4, HEIGHT = 4, SIZE = WIDTH * HEIGHT };
 	enum Type { NONE = 0, _ = 0, I, J, L, O, S, T, Z, COUNT };

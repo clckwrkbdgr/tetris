@@ -13,6 +13,7 @@
 MainWindow::MainWindow(QWidget * parent)
 	: QWidget(parent), tetris(Settings::SIZE)
 {
+	oldLevel = tetris.level();
 	connect(&timer, SIGNAL(timeout()), this, SLOT(onTimer()));
 	timer.start(Settings::START_SPEED);
 }
@@ -20,8 +21,6 @@ MainWindow::MainWindow(QWidget * parent)
 
 void MainWindow::onTimer()
 {
-	int oldLevel = tetris.level();
-
 	if(!tetris.tick()) {
 		timer.stop();
 		QMessageBox::information(this, tr("Fail"), tr("Game over"));
@@ -31,6 +30,7 @@ void MainWindow::onTimer()
 	if(tetris.level() != oldLevel) {
 		timer.setInterval(Settings::SPEED_MOD * timer.interval());
 	}
+	oldLevel = tetris.level();
 
 	update();
 }
@@ -58,75 +58,64 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
 
 void MainWindow::paintEvent(QPaintEvent *)
 {
-	int cellWidth = qMin(width() / tetris.cupSize().width(),
-			height() / tetris.cupSize().height());
+	QMap<F::Type, QColor> blockColors;
+	blockColors[F::I] = Qt::cyan;
+	blockColors[F::J] = Qt::blue;
+	blockColors[F::L] = qRgb(255, 128, 0);
+	blockColors[F::O] = Qt::yellow;
+	blockColors[F::S] = Qt::green;
+	blockColors[F::T] = Qt::darkMagenta;
+	blockColors[F::Z] = Qt::red;
+	if(!timer.isActive()) {
+		foreach(F::Type type, blockColors.keys()) {
+			blockColors[type] = blockColors[type].darker(300);
+		}
+	}
+
+	int cellWidth = qMin(width() / tetris.cupSize().width(), height() / tetris.cupSize().height());
 	QSize cupSize = cellWidth * tetris.cupSize();
-	QPoint startPos = QPoint((width() - cupSize.width()) / 2, (height() - cupSize.height()) / 2);
+	QSize startSize = (size() - cupSize) / 2;
+	QRect cupRect = QRect(QPoint(startSize.width(), startSize.height()), cupSize);
+	QPoint statusPos = QPoint(cupRect.right() + cellWidth, cellWidth);
+	QRect nextFigureRect = QRect(cupRect.right() + cellWidth, cellWidth * 2, F::WIDTH * cellWidth, F::HEIGHT * cellWidth);
 
 	QPainter painter(this);
 	painter.fillRect(rect(), Settings::BACKGROUND);
 
+	QRect shadowRect = QRect(cupRect.topLeft(), QSize(cellWidth, cupSize.height()));
 	foreach(int i, tetris.shadow()) {
-		painter.fillRect(QRect(startPos + QPoint(cellWidth * i, 0), QSize(cellWidth, cupSize.height())), Settings::SHADOW);
+		painter.fillRect(shadowRect.translated(cellWidth * i, 0), Settings::SHADOW);
 	}
 
 	painter.setPen(Settings::FOREGROUND);
 	painter.setBrush(Qt::NoBrush);
-	painter.drawRect(QRect(startPos, cupSize));
+	painter.drawRect(cupRect);
 
 	painter.setPen(Settings::BACKGROUND);
 	QRect cell(0, 0, cellWidth, cellWidth);
-	for(int x = 0; x < tetris.cupSize().width(); ++x) {
-		for(int y = 0; y < tetris.cupSize().height(); ++y) {
-			cell.moveTopLeft(startPos + QPoint(x * cellWidth, y * cellWidth));
-			if(tetris.cell(QPoint(x, y))) {
-				QColor color = Settings::FOREGROUND;
-				switch(tetris.cell(QPoint(x, y))) {
-					case F::I: color = Qt::cyan; break;
-					case F::J: color = Qt::blue; break;
-					case F::L: color = qRgb(255, 128, 0); break;
-					case F::O: color = Qt::yellow; break;
-					case F::S: color = Qt::green; break;
-					case F::T: color = Qt::darkMagenta; break;
-					case F::Z: color = Qt::red; break;
-					default: break;
-				}
-				painter.setBrush(color);
-				painter.drawRect(cell);
-			}
+	foreach(QPoint pos, range(tetris.cupSize())) {
+		cell.moveTopLeft(cupRect.topLeft() + pos * cellWidth);
+		F::Type block = tetris.cell(pos);
+		if(block) {
+			painter.setBrush(blockColors[block]);
+			painter.drawRect(cell);
 		}
 	}
 
 	painter.setPen(Settings::FOREGROUND);
 	painter.setBrush(Settings::BACKGROUND);
-
-	painter.drawText(cell.right() + cell.width(), cell.height(),
-			tr("Level: %1").arg(tetris.level()));
+	painter.drawText(cupRect.right() + cell.width(), cell.height(),
+			tr("Level: %1.").arg(tetris.level()));
 
 	painter.setPen(Settings::BACKGROUND);
-	QRect nextFigureCell = QRect(QPoint(cell.right() + cell.width(), cell.height() * 2), cell.size());
-	startPos = nextFigureCell.topLeft();
+	cell = QRect(nextFigureRect.topLeft(), cell.size());
 	foreach(QPoint pos, range(F::WIDTH, F::HEIGHT)) {
-		nextFigureCell.moveTopLeft(startPos + pos * cellWidth);
-		if(tetris.next().at(pos)) {
-			QColor color = Settings::FOREGROUND;
-			switch(tetris.next().at(pos)) {
-				case F::I: color = Qt::cyan; break;
-				case F::J: color = Qt::blue; break;
-				case F::L: color = qRgb(255, 128, 0); break;
-				case F::O: color = Qt::yellow; break;
-				case F::S: color = Qt::green; break;
-				case F::T: color = Qt::darkMagenta; break;
-				case F::Z: color = Qt::red; break;
-				default: break;
-			}
-			painter.setBrush(color);
-			painter.drawRect(nextFigureCell);
+		cell.moveTopLeft(nextFigureRect.topLeft() + pos * cellWidth);
+		F::Type block = tetris.next().at(pos);
+		if(block) {
+			painter.setBrush(blockColors[block]);
+			painter.drawRect(cell);
 		}
-	}
-
-	if(!timer.isActive()) {
-		painter.drawText(cell.right() + cell.width(), cell.height() * 2, tr("Paused"));
 	}
 }
 

@@ -28,6 +28,7 @@ public slots:
 private:
 	QTimer timer;
 	Tetris tetris;
+	int oldLevel;
 };
 
 

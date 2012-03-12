@@ -1,3 +1,8 @@
+# tetris.py - Standard simple tetris game.
+# author antifin 2012
+# version 1.0.0
+# license WTFPLv2
+
 import random
 import copy
 import pygame
@@ -6,7 +11,7 @@ from pygame.locals import *
 COLORS = {
 	"BACK" : (0, 0, 0),
 	"FORE" : (255, 255, 255),
-	"SHADOW" : (10, 10, 10),
+	"SHADOW" : (20, 20, 20),
 	"I" : (0, 255, 255),
 	"J" : (0, 0, 255),
 	"L" : (255, 128, 0),
@@ -18,11 +23,13 @@ COLORS = {
 CUP_WIDTH = 10
 CUP_HEIGHT = 22
 SCORE_LEVEL = 10 # Rows for one speed level.
+START_SPEED = 500
+SPEED_MODIFIER = 10
 
 def init_sdl():
 	pygame.init()
 	pygame.mouse.set_visible(False)
-	screen = pygame.display.set_mode((640, 480)) #, FULLSCREEN)
+	screen = pygame.display.set_mode((0, 0), FULLSCREEN)
 	return screen
 
 class Figure:
@@ -42,7 +49,7 @@ class Figure:
 	def clone(self):
 		return Figure(self.color, self.array)
 
-def array_from_points(figure_as_points):
+def from_points(figure_as_points):
 	array = []
 	for rotational_pose in figure_as_points:
 		rows = [[False for x in range(Figure.W)] for y in range(Figure.H)]
@@ -53,8 +60,13 @@ def array_from_points(figure_as_points):
 
 def make_figures():
 	result = []
-	# TODO figures
-	result.append(Figure("Z", array_from_points([[(0, 0), (1, 1)], [(1, 1), (1, 2)]])))
+	result.append(Figure("O", from_points([ [(1,1),(2,2),(1,2),(2,1)] ])))
+	result.append(Figure("I", from_points([ [(1,0),(1,1),(1,2),(1,3)], [(0,1),(1,1),(2,1),(3,1)] ])))
+	result.append(Figure("J", from_points([ [(0,1),(1,1),(2,1),(2,2)], [(1,0),(1,1),(1,2),(2,0)], [(0,1),(1,1),(2,1),(0,0)], [(1,0),(1,1),(1,2),(0,2)] ])))
+	result.append(Figure("L", from_points([ [(0,1),(1,1),(2,1),(0,2)], [(1,0),(1,1),(1,2),(2,2)], [(0,1),(1,1),(2,1),(2,0)], [(1,0),(1,1),(1,2),(0,0)] ])))
+	result.append(Figure("S", from_points([ [(0,1),(1,1),(1,0),(2,0)], [(0,0),(0,1),(1,1),(1,2)] ])))
+	result.append(Figure("T", from_points([ [(0,1),(1,1),(2,1),(1,2)], [(1,0),(1,1),(1,2),(2,1)], [(0,1),(1,1),(2,1),(1,0)], [(1,0),(1,1),(1,2),(0,1)] ])))
+	result.append(Figure("Z", from_points([ [(0,0),(1,1),(1,0),(2,1)], [(1,0),(0,1),(1,1),(0,2)] ])))
 	return result
 
 def shifted(pos, shift):
@@ -88,11 +100,11 @@ def make_surfaces(screen, colors):
 
 	cup_surface = pygame.surface.Surface( (cell_width * CUP_WIDTH, cell_width * CUP_HEIGHT) )
 	cup_surface.fill(COLORS["BACK"])
-	pygame.draw.rect(cup_surface, COLORS["FORE"], cup_surface.get_rect(), 1)
 	cup_rect = cup_surface.get_rect()
 	cup_rect.center = screen.get_rect().center
 
 	shadow = pygame.surface.Surface( (cell_width, cell_width * CUP_HEIGHT) )
+	shadow.fill(COLORS["SHADOW"])
 
 	bricks = {}
 	for color in colors:
@@ -123,7 +135,8 @@ def clear_filled_rows(cup):
 		else:
 			lines_cleared += 1
 	for row in range(CUP_HEIGHT - len(new_cup)):
-		new_cup.insert(0, [None * CUP_WIDTH])
+		empty_row = [None for x in range(CUP_WIDTH)]
+		new_cup.insert(0, empty_row)
 	return new_cup, lines_cleared
 
 def main():
@@ -135,7 +148,7 @@ def main():
 	current = random.choice(figures).clone()
 	next_figure = random.choice(figures).clone()
 
-	cell_size, cup_surface, cup_rect, shadow, bricks, next_view = make_surfaces( screen, ["Z"]) # TODO figures
+	cell_size, cup_surface, cup_rect, shadow, bricks, next_view = make_surfaces( screen, ["I", "J", "L", "O", "S", "T", "Z", "FORE", "SHADOW"])
 
 	playing = True
 	paused = False
@@ -170,7 +183,7 @@ def main():
 						paused = not paused
 
 		if playing and not paused:
-			if pygame.time.get_ticks() - previous_time > 500:
+			if pygame.time.get_ticks() - previous_time > (START_SPEED - SPEED_MODIFIER * speed):
 				previous_time = pygame.time.get_ticks()
 				if valid_pos(cup, shifted(figure_pos, (0, 1)), current):
 					figure_pos = shifted(figure_pos, (0, 1))
@@ -194,6 +207,7 @@ def main():
 		shadows = get_shadow(cup, figure_pos, current)
 		for col in shadows:
 			shadow_rect = pygame.Rect(cell_size[0] * col, cup_rect.top, cell_size[0], cup_rect.height)
+			shadow_rect.move_ip(cup_rect.topleft)
 			screen.blit(shadow, shadow_rect)
 		#if playing and not paused: colors; else: draw gray content and figure
 		for row in range(CUP_HEIGHT):
@@ -201,19 +215,35 @@ def main():
 				if cup[row][col]:
 					cell_rect = pygame.Rect((col * cell_size[0], row * cell_size[1]), cell_size)
 					cell_rect.move_ip(cup_rect.topleft)
-					screen.blit(bricks[cup[row][col]], cell_rect)
+					if not playing:
+						screen.blit(bricks["SHADOW"], cell_rect)
+					elif paused:
+						screen.blit(bricks["FORE"], cell_rect)
+					else:
+						screen.blit(bricks[cup[row][col]], cell_rect)
 		for row in range(Figure.H):
 			for col in range(Figure.W):
 				if current.face()[row][col]:
 					cell_rect = pygame.Rect(((figure_pos[0] + col) * cell_size[0], (figure_pos[1] + row) * cell_size[1]), cell_size)
 					cell_rect.move_ip(cup_rect.topleft)
-					screen.blit(bricks[current.color], cell_rect)
+					if not playing:
+						screen.blit(bricks["SHADOW"], cell_rect)
+					elif paused:
+						screen.blit(bricks["FORE"], cell_rect)
+					else:
+						screen.blit(bricks[current.color], cell_rect)
 		next_view.fill(COLORS["BACK"])
 		for row in range(Figure.H):
 			for col in range(Figure.W):
 				if next_figure.face()[row][col]:
 					cell_rect = pygame.Rect((col * cell_size[0], row * cell_size[1]), cell_size)
-					next_view.blit(bricks[next_figure.color], cell_rect)
+					if not playing:
+						next_view.blit(bricks["SHADOW"], cell_rect)
+					elif paused:
+						next_view.blit(bricks["FORE"], cell_rect)
+					else:
+						next_view.blit(bricks[next_figure.color], cell_rect)
+		pygame.draw.rect(screen, COLORS["FORE"], cup_rect, 1)
 		screen.blit(next_view, (cup_rect.topright, cell_size))
 
 		pygame.display.flip()

@@ -1,7 +1,8 @@
-# tetris.py - Standard simple tetris game.
-# author antifin 2012
-# version 1.0.0
-# license WTFPLv2
+/** tetris.py - Standard simple tetris game.
+ * author antifin 2012
+ * version 1.0.0
+ * license WTFPLv2
+ */
 
 import random
 import copy
@@ -22,7 +23,7 @@ COLORS = {
 	}
 CUP_WIDTH = 10
 CUP_HEIGHT = 22
-SCORE_LEVEL = 10 # Rows for one speed level.
+SCORE_LEVEL = 10 // Rows for one speed level.
 START_SPEED = 500
 SPEED_MODIFIER = 10
 
@@ -201,7 +202,7 @@ def main():
 					playing = False
 				next_figure = random.choice(figures).clone()
 
-		# Drawing.
+		// Drawing.
 		screen.fill(COLORS["BACK"])
 		screen.blit(cup_surface, cup_rect)
 		shadows = get_shadow(cup, figure_pos, current)
@@ -209,7 +210,7 @@ def main():
 			shadow_rect = pygame.Rect(cell_size[0] * col, cup_rect.top, cell_size[0], cup_rect.height)
 			shadow_rect.move_ip(cup_rect.topleft)
 			screen.blit(shadow, shadow_rect)
-		#if playing and not paused: colors; else: draw gray content and figure
+		//if playing and not paused: colors; else: draw gray content and figure
 		for row in range(CUP_HEIGHT):
 			for col in range(CUP_WIDTH):
 				if cup[row][col]:

@@ -2,7 +2,7 @@ BIN = tetris
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(addprefix tmp/,$(SOURCES:.cpp=.o))
 CXXFLAGS = -MD -MP -std=c++0x $(WARNINGS)
-LIBS = -lSDL2
+LIBS = -lSDL2 -lchthon2
 
 all: $(BIN)
 

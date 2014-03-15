@@ -4,97 +4,191 @@
  * license WTFPLv2
  */
 
-import random
-import copy
-import pygame
-from pygame.locals import *
+#include <SDL2/SDL.h>
+#include <chthon2/map.h>
+#include <set>
+#include <vector>
 
-COLORS = {
-	"BACK" : (0, 0, 0),
-	"FORE" : (255, 255, 255),
-	"SHADOW" : (20, 20, 20),
-	"I" : (0, 255, 255),
-	"J" : (0, 0, 255),
-	"L" : (255, 128, 0),
-	"O" : (255, 255, 0),
-	"S" : (0, 255, 0),
-	"T" : (255, 0, 255),
-	"Z" : (255, 0, 0)
+enum class Color {
+	BACK = 0,
+	FORE = 0xffffff,
+	SHADOW = 0x101010,
+	I = 0x00ffff,
+	J = 0x0000ff,
+	L = 0xff8000,
+	O = 0xffff00,
+	S = 0x00ff00,
+	T = 0xff00ff,
+	Z = 0xff0000
+};
+
+enum {
+	CUP_WIDTH = 10,
+	CUP_HEIGHT = 22,
+	SCORE_LEVEL = 10, // Rows for one speed level.
+	START_SPEED = 500,
+	SPEED_MODIFIER = 10
+};
+
+typedef Chthon::Map<bool> Face;
+typedef std::vector<Face> Array;
+
+class Figure {
+public:
+	enum { W = 4, H = 4 };
+	Color color;
+	Array array;
+
+	Figure(Color figure_color, const Array & figure_array);
+	const Face & face() const;
+	void rotate();
+	Figure clone() const;
+private:
+	int current;
+};
+
+Figure::Figure(Color figure_color, const Array & figure_array)
+	: color(figure_color), array(figure_array), current(0)
+{
+}
+
+const Face & Figure::face() const
+{
+	return array[current];
+}
+
+void Figure::rotate()
+{
+	if(++current >= array.size()) {
+		current = 0;
 	}
-CUP_WIDTH = 10
-CUP_HEIGHT = 22
-SCORE_LEVEL = 10 // Rows for one speed level.
-START_SPEED = 500
-SPEED_MODIFIER = 10
+}
 
-def init_sdl():
-	pygame.init()
-	pygame.mouse.set_visible(False)
-	screen = pygame.display.set_mode((0, 0), FULLSCREEN)
-	return screen
+Figure Figure::clone() const
+{
+	return Figure(color, array);
+}
 
-class Figure:
-	W = 4
-	H = 4
 
-	def __init__(self, color, array):
-		self.color = color
-		self.array = copy.deepcopy(array)
+Array from_points(const std::vector<std::vector<Chthon::Point>> & figure_as_points)
+{
+	Array array;
+	for(const std::vector<Chthon::Point> & rotational_pose : figure_as_points) {
+		Face rows(Figure::W, Figure::H, false);
+		for(const Chthon::Point & pos : rotational_pose) {
+			rows.cell(pos) = true;
+		}
+		array.push_back(rows);
+	}
+	return array;
+}
 
-	def face(self):
-		return self.array[0]
+std::vector<Figure> make_figures()
+{
+	std::vector<Figure> result;
+	result.push_back(Figure(Color::O, from_points({ {{1,1},{2,2},{1,2},{2,1}} })));
+	result.push_back(Figure(Color::I, from_points({ {{1,0},{1,1},{1,2},{1,3}}, {{0,1},{1,1},{2,1},{3,1}} })));
+	result.push_back(Figure(Color::J, from_points({ {{0,1},{1,1},{2,1},{2,2}}, {{1,0},{1,1},{1,2},{2,0}}, {{0,1},{1,1},{2,1},{0,0}}, {{1,0},{1,1},{1,2},{0,2}} })));
+	result.push_back(Figure(Color::L, from_points({ {{0,1},{1,1},{2,1},{0,2}}, {{1,0},{1,1},{1,2},{2,2}}, {{0,1},{1,1},{2,1},{2,0}}, {{1,0},{1,1},{1,2},{0,0}} })));
+	result.push_back(Figure(Color::S, from_points({ {{0,1},{1,1},{1,0},{2,0}}, {{0,0},{0,1},{1,1},{1,2}} })));
+	result.push_back(Figure(Color::T, from_points({ {{0,1},{1,1},{2,1},{1,2}}, {{1,0},{1,1},{1,2},{2,1}}, {{0,1},{1,1},{2,1},{1,0}}, {{1,0},{1,1},{1,2},{0,1}} })));
+	result.push_back(Figure(Color::Z, from_points({ {{0,0},{1,1},{1,0},{2,1}}, {{1,0},{0,1},{1,1},{0,2}} })));
+	return result;
+}
 
-	def rotate(self):
-		self.array.append(self.array.pop(0))
-	
-	def clone(self):
-		return Figure(self.color, self.array)
+Chthon::Point shifted(const Chthon::Point & pos, const Chthon::Point & shift)
+{
+	return pos + shift;
+}
 
-def from_points(figure_as_points):
-	array = []
-	for rotational_pose in figure_as_points:
-		rows = [[False for x in range(Figure.W)] for y in range(Figure.H)]
-		for col, row in rotational_pose:
-			rows[row][col] = True
-		array.append(rows)
-	return array
+typedef Chthon::Map<Color> Cup;
 
-def make_figures():
-	result = []
-	result.append(Figure("O", from_points([ [(1,1),(2,2),(1,2),(2,1)] ])))
-	result.append(Figure("I", from_points([ [(1,0),(1,1),(1,2),(1,3)], [(0,1),(1,1),(2,1),(3,1)] ])))
-	result.append(Figure("J", from_points([ [(0,1),(1,1),(2,1),(2,2)], [(1,0),(1,1),(1,2),(2,0)], [(0,1),(1,1),(2,1),(0,0)], [(1,0),(1,1),(1,2),(0,2)] ])))
-	result.append(Figure("L", from_points([ [(0,1),(1,1),(2,1),(0,2)], [(1,0),(1,1),(1,2),(2,2)], [(0,1),(1,1),(2,1),(2,0)], [(1,0),(1,1),(1,2),(0,0)] ])))
-	result.append(Figure("S", from_points([ [(0,1),(1,1),(1,0),(2,0)], [(0,0),(0,1),(1,1),(1,2)] ])))
-	result.append(Figure("T", from_points([ [(0,1),(1,1),(2,1),(1,2)], [(1,0),(1,1),(1,2),(2,1)], [(0,1),(1,1),(2,1),(1,0)], [(1,0),(1,1),(1,2),(0,1)] ])))
-	result.append(Figure("Z", from_points([ [(0,0),(1,1),(1,0),(2,1)], [(1,0),(0,1),(1,1),(0,2)] ])))
-	return result
+bool valid_pos(const Cup & cup, const Chthon::Point & pos, const Figure & figure)
+{
+	for(int col = 0; col < Figure::W; ++col) {
+		for(int row = 0; row < Figure::H; ++row) {
+			if(figure.face().cell(col, row)) {
+				if(row + pos.y < 0 or row + pos.y >= CUP_HEIGHT) {
+					return false;
+				}
+				if(col + pos.x < 0 or col + pos.x >= CUP_WIDTH) {
+					return false;
+				}
+				if(cup.cell(col + pos.x, row + pos.y) != Color::BACK) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
 
-def shifted(pos, shift):
-	return [pos[0] + shift[0], pos[1] + shift[1]]
+bool may_be_fixated(const Cup & cup, const Chthon::Point & pos, const Figure & figure)
+{
+	return !valid_pos(cup, shifted(pos, {0, 1}), figure);
+}
 
-def valid_pos(cup, pos, figure):
-	for col in range(Figure.W):
-		for row in range(Figure.H):
-			if figure.face()[row][col]:
-				if row + pos[1] < 0 or row + pos[1] >= CUP_HEIGHT:
-					return False
-				if col + pos[0] < 0 or col + pos[0] >= CUP_WIDTH:
-					return False
-				if cup[row + pos[1]][col + pos[0]]:
-					return False
-	return True
+void fixate(const Figure & figure, const Chthon::Point & pos, Cup & cup)
+{
+	for(int col = 0; col < Figure::W; ++col) {
+		for(int row = 0; row < Figure::H; ++row) {
+			if(figure.face().cell(col, row)) {
+				cup.cell(col + pos.x, row + pos.y) = figure.color;
+			}
+		}
+	}
+}
 
-def may_be_fixated(cup, pos, figure):
-	return not valid_pos(cup, shifted(pos, (0, 1)), figure)
+std::set<int> get_shadow(const Cup & cup, const Chthon::Point & pos, const Figure & figure)
+{
+	std::set<int> shadow;
+	for(int col = 0; col < Figure::W; ++col) {
+		for(int row = 0; row < Figure::H; ++row) {
+			if(figure.face().cell(col, row)) {
+				shadow.insert(pos.x + col);
+				break;
+			}
+		}
+	}
+	return shadow;
+}
 
-def fixate(figure, pos, cup):
-	for col in range(Figure.W):
-		for row in range(Figure.H):
-			if figure.face()[row][col]:
-				cup[row + pos[1]][col + pos[0]] = figure.color
+int clear_filled_rows(Cup & cup)
+{
+	int lines_cleared = 0;
+	Cup new_cup(cup.width(), cup.height(), Color::BACK);
+	int new_cup_row = CUP_HEIGHT - 1;
+	for(int row = CUP_HEIGHT - 1; row >= 0; --row) {
+		bool has_gap = false;
+		for(int col = 0; col < CUP_WIDTH; ++col) {
+			if(cup.cell(col, row) == Color::BACK) {
+				has_gap = true;
+				break;
+			}
+		}
+		if(has_gap) {
+			for(int col = 0; col < CUP_WIDTH; ++col) {
+				new_cup.cell(col, new_cup_row) = cup.cell(col, row);
+			}
+			++new_cup_row;
+		} else {
+			++lines_cleared;
+		}
+	}
+	return lines_cleared;
+}
 
-def make_surfaces(screen, colors):
+def main():
+	screen = init_sdl()
+	figures = make_figures()
+
+	cup = [[None for x in range(CUP_WIDTH)] for y in range(CUP_HEIGHT)]
+	start_pos = [(CUP_WIDTH - Figure.W) / 2, 0]
+	current = random.choice(figures).clone()
+	next_figure = random.choice(figures).clone()
+
+	// make surfaces
+	colors = ["I", "J", "L", "O", "S", "T", "Z", "FORE", "SHADOW"]
 	screen_size = screen.get_size()
 	cell_width = min(screen_size[0] / CUP_WIDTH, screen_size[1] / CUP_HEIGHT)
 	cell_size = (cell_width, cell_width)
@@ -114,42 +208,8 @@ def make_surfaces(screen, colors):
 		pygame.draw.rect(brick, COLORS["BACK"], brick.get_rect(), 1)
 		bricks[color] = brick
 
+
 	next_view = pygame.surface.Surface( (cell_width * Figure.W, cell_width * Figure.H) )
-
-	return cell_size, cup_surface, cup_rect, shadow, bricks, next_view
-
-def get_shadow(cup, pos, figure):
-	shadow = set()
-	for col in range(Figure.W):
-		for row in range(Figure.H):
-			if figure.face()[row][col]:
-				shadow.add(pos[0] + col)
-				break
-	return shadow
-
-def clear_filled_rows(cup):
-	lines_cleared = 0
-	new_cup = []
-	for row in reversed(range(CUP_HEIGHT)):
-		if None in cup[row]:
-			new_cup.insert(0, cup[row])
-		else:
-			lines_cleared += 1
-	for row in range(CUP_HEIGHT - len(new_cup)):
-		empty_row = [None for x in range(CUP_WIDTH)]
-		new_cup.insert(0, empty_row)
-	return new_cup, lines_cleared
-
-def main():
-	screen = init_sdl()
-	figures = make_figures()
-
-	cup = [[None for x in range(CUP_WIDTH)] for y in range(CUP_HEIGHT)]
-	start_pos = [(CUP_WIDTH - Figure.W) / 2, 0]
-	current = random.choice(figures).clone()
-	next_figure = random.choice(figures).clone()
-
-	cell_size, cup_surface, cup_rect, shadow, bricks, next_view = make_surfaces( screen, ["I", "J", "L", "O", "S", "T", "Z", "FORE", "SHADOW"])
 
 	playing = True
 	paused = False
@@ -248,7 +308,4 @@ def main():
 		screen.blit(next_view, (cup_rect.topright, cell_size))
 
 		pygame.display.flip()
-
-if __name__ == "__main__":
-	main()
 

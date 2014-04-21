@@ -173,11 +173,12 @@ int clear_filled_rows(Cup & cup)
 			for(int col = 0; col < CUP_WIDTH; ++col) {
 				new_cup.cell(col, new_cup_row) = cup.cell(col, row);
 			}
-			++new_cup_row;
+			--new_cup_row;
 		} else {
 			++lines_cleared;
 		}
 	}
+	cup = new_cup;
 	return lines_cleared;
 }
 

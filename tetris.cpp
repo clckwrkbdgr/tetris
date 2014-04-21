@@ -243,7 +243,6 @@ int main()
 		// Drawing.
 		SDL_SetRenderDrawColor(renderer, Chthon::get_red(Chthon::Color(Color::BACK)), Chthon::get_green(Chthon::Color(Color::BACK)), Chthon::get_blue(Chthon::Color(Color::BACK)), 255);
 		SDL_RenderClear(renderer);
-		/*
 		std::set<int> shadows = get_shadow(cup, figure_pos, current);
 		for(int col : shadows) {
 			SDL_Rect shadow_rect = {cell_width * col, cup_rect.y, cell_width, cup_rect.h};
@@ -251,9 +250,7 @@ int main()
 			shadow_rect.y += cup_rect.y;
 			SDL_RenderCopy(renderer, shadow, NULL, &shadow_rect);
 		}
-		*/
 		// If playing and not paused: colors; else: draw gray content and figure.
-		/*
 		for(int row = 0; row < CUP_HEIGHT; ++row) {
 			for(int col = 0; col < CUP_WIDTH; ++col) {
 				if((unsigned)cup.cell(col, row)) {
@@ -270,7 +267,6 @@ int main()
 				}
 			}
 		}
-		*/
 		for(int row = 0; row < Figure::H; ++row) {
 			for(int col = 0; col < Figure::W; ++col) {
 				if(current.face().cell(col, row)) {
@@ -282,13 +278,12 @@ int main()
 					} else if(paused){
 						SDL_RenderCopy(renderer, bricks[Color::FORE], NULL, &cell_rect);
 					} else {
-						SDL_RenderCopy(renderer, bricks[cup.cell(col, row)], NULL, &cell_rect);
+						SDL_RenderCopy(renderer, bricks[current.color], NULL, &cell_rect);
 					}
 				}
 			}
 		}
-		/*
-		SDL_Rect next_view_rect = {cup_rect.x + cup_rect.w, cup_rect.y, cell_width, cell_width};
+		SDL_Rect next_view_rect = {cup_rect.x + cup_rect.w + cell_width, cup_rect.y, cell_width, cell_width};
 		SDL_RenderFillRect(renderer, &next_view_rect);
 		for(int row = 0; row < Figure::H; ++row) {
 			for(int col = 0; col < Figure::W; ++col) {
@@ -301,12 +296,11 @@ int main()
 					} else if(paused){
 						SDL_RenderCopy(renderer, bricks[Color::FORE], NULL, &cell_rect);
 					} else {
-						SDL_RenderCopy(renderer, bricks[cup.cell(col, row)], NULL, &cell_rect);
+						SDL_RenderCopy(renderer, bricks[next_figure.color], NULL, &cell_rect);
 					}
 				}
 			}
 		}
-		*/
 		SDL_SetRenderDrawColor(renderer, Chthon::get_red(Chthon::Color(Color::FORE)), Chthon::get_green(Chthon::Color(Color::FORE)), Chthon::get_blue(Chthon::Color(Color::FORE)), 255);
 		SDL_RenderDrawRect(renderer, &cup_rect);
 
@@ -346,7 +340,6 @@ int main()
 			}
 		}
 
-		/*
 		if(playing && !paused) {
 			Uint32 current_ticks = SDL_GetTicks();
 			if(current_ticks - previous_time > (START_SPEED - SPEED_MODIFIER * speed)) {
@@ -373,7 +366,6 @@ int main()
 				next_figure = figures[rand() % figures.size()];
 			}
 		}
-		*/
 	}
 	return 0;
 }

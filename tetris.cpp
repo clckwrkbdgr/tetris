@@ -353,7 +353,7 @@ int main(int argc, char * argv[])
 		while(SDL_PollEvent(&event)) {
 			if(event.type == SDL_KEYDOWN) {
 				int event_key = event.key.keysym.sym;
-				if(event_key == SDLK_q) {
+				if(event_key == SDLK_q || event_key == SDLK_ESCAPE) {
 					quit = true;
 				} else if(playing) {
 					if(event_key == SDLK_UP) {

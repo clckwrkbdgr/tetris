@@ -12,6 +12,8 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <ctime>
+#include <cstdlib>
 
 #define char const char
 namespace Sprites {
@@ -227,7 +229,7 @@ int clear_filled_rows(Cup & cup)
 	return lines_cleared;
 }
 
-int main()
+int main(int argc, char * argv[])
 {
 	srand(time(nullptr));
 	std::vector<Figure> figures = make_figures();

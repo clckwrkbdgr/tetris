@@ -6,6 +6,8 @@
 
 #include <SDL2/SDL.h>
 #include <chthon2/map.h>
+#include <chthon2/pixmap.h>
+#include <chthon2/log.h>
 #include <map>
 #include <set>
 #include <vector>
@@ -211,7 +213,7 @@ int main()
 	SDL_Surface * s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width * CUP_WIDTH, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
 	SDL_FillRect(s, NULL, (unsigned)Color::BACK);
 	SDL_Texture * cup_surface = SDL_CreateTextureFromSurface(renderer, s);
-	SDL_Rect cup_rect = {screen_size.w - s->w / 2, screen_size.h - s->h / 2, s->w, s->h};
+	SDL_Rect cup_rect = {(screen_size.w - s->w) / 2, (screen_size.h - s->h) / 2, s->w, s->h};
 
 	s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
 	SDL_FillRect(s, NULL, (unsigned)Color::SHADOW);
@@ -220,7 +222,7 @@ int main()
 	std::map<Color, SDL_Texture*> bricks;
 	std::vector<Color> colors = { Color::I, Color::J, Color::L, Color::O, Color::S, Color::T, Color::Z, Color::BACK, Color::FORE, Color::SHADOW };
 	for(Color color : colors) {
-		SDL_Surface * s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
+		s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width, 32, 0, 0, 0, 0); //Creating the surface.
 		SDL_FillRect(s, NULL, (unsigned)Color::BACK);
 		SDL_Rect r = {1, 1, s->w - 1, s->h - 1};
 		SDL_FillRect(s, &r, (unsigned)color);
@@ -239,8 +241,9 @@ int main()
 	SDL_Event event;
 	while(!quit) {
 		// Drawing.
+		SDL_SetRenderDrawColor(renderer, Chthon::get_red(Chthon::Color(Color::BACK)), Chthon::get_green(Chthon::Color(Color::BACK)), Chthon::get_blue(Chthon::Color(Color::BACK)), 255);
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, cup_surface, NULL, &cup_rect);
+		/*
 		std::set<int> shadows = get_shadow(cup, figure_pos, current);
 		for(int col : shadows) {
 			SDL_Rect shadow_rect = {cell_width * col, cup_rect.y, cell_width, cup_rect.h};
@@ -248,7 +251,9 @@ int main()
 			shadow_rect.y += cup_rect.y;
 			SDL_RenderCopy(renderer, shadow, NULL, &shadow_rect);
 		}
+		*/
 		// If playing and not paused: colors; else: draw gray content and figure.
+		/*
 		for(int row = 0; row < CUP_HEIGHT; ++row) {
 			for(int col = 0; col < CUP_WIDTH; ++col) {
 				if((unsigned)cup.cell(col, row)) {
@@ -265,8 +270,9 @@ int main()
 				}
 			}
 		}
-		for(int row = 0; row < Figure::W; ++row) {
-			for(int col = 0; col < Figure::H; ++col) {
+		*/
+		for(int row = 0; row < Figure::H; ++row) {
+			for(int col = 0; col < Figure::W; ++col) {
 				if(current.face().cell(col, row)) {
 					SDL_Rect cell_rect = {(figure_pos.x + col) * cell_width, (figure_pos.y + row) * cell_width, cell_width, cell_width};
 					cell_rect.x += cup_rect.x;
@@ -281,10 +287,11 @@ int main()
 				}
 			}
 		}
+		/*
 		SDL_Rect next_view_rect = {cup_rect.x + cup_rect.w, cup_rect.y, cell_width, cell_width};
 		SDL_RenderFillRect(renderer, &next_view_rect);
-		for(int row = 0; row < Figure::W; ++row) {
-			for(int col = 0; col < Figure::H; ++col) {
+		for(int row = 0; row < Figure::H; ++row) {
+			for(int col = 0; col < Figure::W; ++col) {
 				if(next_figure.face().cell(col, row)) {
 					SDL_Rect cell_rect = {col * cell_width, row * cell_width, cell_width, cell_width};
 					cell_rect.x += next_view_rect.x;
@@ -299,6 +306,8 @@ int main()
 				}
 			}
 		}
+		*/
+		SDL_SetRenderDrawColor(renderer, Chthon::get_red(Chthon::Color(Color::FORE)), Chthon::get_green(Chthon::Color(Color::FORE)), Chthon::get_blue(Chthon::Color(Color::FORE)), 255);
 		SDL_RenderDrawRect(renderer, &cup_rect);
 
 		SDL_RenderPresent(renderer);
@@ -337,6 +346,7 @@ int main()
 			}
 		}
 
+		/*
 		if(playing && !paused) {
 			Uint32 current_ticks = SDL_GetTicks();
 			if(current_ticks - previous_time > (START_SPEED - SPEED_MODIFIER * speed)) {
@@ -363,6 +373,7 @@ int main()
 				next_figure = figures[rand() % figures.size()];
 			}
 		}
+		*/
 	}
 	return 0;
 }

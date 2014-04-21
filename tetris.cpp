@@ -6,6 +6,7 @@
 
 #include <SDL2/SDL.h>
 #include <chthon2/map.h>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -30,7 +31,7 @@ enum {
 	SPEED_MODIFIER = 10
 };
 
-typedef Chthon::Map<bool> Face;
+typedef Chthon::Map<char> Face;
 typedef std::vector<Face> Array;
 
 class Figure {
@@ -178,134 +179,190 @@ int clear_filled_rows(Cup & cup)
 	return lines_cleared;
 }
 
-def main():
-	screen = init_sdl()
-	figures = make_figures()
+int main()
+{
+	srand(time(nullptr));
+	std::vector<Figure> figures = make_figures();
 
-	cup = [[None for x in range(CUP_WIDTH)] for y in range(CUP_HEIGHT)]
-	start_pos = [(CUP_WIDTH - Figure.W) / 2, 0]
-	current = random.choice(figures).clone()
-	next_figure = random.choice(figures).clone()
+	Cup cup(CUP_WIDTH, CUP_HEIGHT);
+	Chthon::Point start_pos = {(CUP_WIDTH - Figure::W) / 2, 0};
+	Figure current = figures[rand() % figures.size()];
+	Figure next_figure = figures[rand() % figures.size()];
+
+	SDL_Init(SDL_INIT_EVERYTHING);
+	SDL_Window * window = SDL_CreateWindow(
+			"Catris",
+			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			0, 0,
+			SDL_WINDOW_FULLSCREEN_DESKTOP
+			);
+	SDL_ShowCursor(0);
+	SDL_Rect screen_size;
+	screen_size.x = 0;
+	screen_size.y = 0;
+	SDL_GetWindowSize(window, &screen_size.w, &screen_size.h);
+	int cell_width = std::min(screen_size.w / CUP_WIDTH, screen_size.h / CUP_HEIGHT);
+
+	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, 0);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 	// make surfaces
-	colors = ["I", "J", "L", "O", "S", "T", "Z", "FORE", "SHADOW"]
-	screen_size = screen.get_size()
-	cell_width = min(screen_size[0] / CUP_WIDTH, screen_size[1] / CUP_HEIGHT)
-	cell_size = (cell_width, cell_width)
+	SDL_Surface * s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width * CUP_WIDTH, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
+	SDL_FillRect(s, NULL, (unsigned)Color::BACK);
+	SDL_Texture * cup_surface = SDL_CreateTextureFromSurface(renderer, s);
+	SDL_Rect cup_rect = {screen_size.w - s->w / 2, screen_size.h - s->h / 2, s->w, s->h};
 
-	cup_surface = pygame.surface.Surface( (cell_width * CUP_WIDTH, cell_width * CUP_HEIGHT) )
-	cup_surface.fill(COLORS["BACK"])
-	cup_rect = cup_surface.get_rect()
-	cup_rect.center = screen.get_rect().center
+	s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
+	SDL_FillRect(s, NULL, (unsigned)Color::SHADOW);
+	SDL_Texture * shadow = SDL_CreateTextureFromSurface(renderer, s);
 
-	shadow = pygame.surface.Surface( (cell_width, cell_width * CUP_HEIGHT) )
-	shadow.fill(COLORS["SHADOW"])
+	std::map<Color, SDL_Texture*> bricks;
+	std::vector<Color> colors = { Color::I, Color::J, Color::L, Color::O, Color::S, Color::T, Color::Z, Color::BACK, Color::FORE, Color::SHADOW };
+	for(Color color : colors) {
+		SDL_Surface * s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width * CUP_HEIGHT, 32, 0, 0, 0, 0); //Creating the surface.
+		SDL_FillRect(s, NULL, (unsigned)Color::BACK);
+		SDL_Rect r = {1, 1, s->w - 1, s->h - 1};
+		SDL_FillRect(s, &r, (unsigned)color);
+		bricks[color] = SDL_CreateTextureFromSurface(renderer, s);
+	}
+	s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width * Figure::W, cell_width * Figure::H, 32, 0, 0, 0, 0); //Creating the surface.
+	SDL_Texture * next_view = SDL_CreateTextureFromSurface(renderer, s);
 
-	bricks = {}
-	for color in colors:
-		brick = pygame.surface.Surface(cell_size)
-		brick.fill(COLORS[color])
-		pygame.draw.rect(brick, COLORS["BACK"], brick.get_rect(), 1)
-		bricks[color] = brick
-
-
-	next_view = pygame.surface.Surface( (cell_width * Figure.W, cell_width * Figure.H) )
-
-	playing = True
-	paused = False
-	speed = 1
-	score = 0
-	figure_pos = start_pos
-	previous_time = pygame.time.get_ticks()
-	while True:
-		for event in pygame.event.get():
-			if event.type == QUIT:
-				return
-			elif event.type == KEYDOWN:
-				if event.key == K_q:
-					return
-				elif playing:
-					if event.key == K_UP:
-						rotated = current.clone()
-						rotated.rotate()
-						if valid_pos(cup, figure_pos, rotated):
-							current = rotated
-					elif event.key == K_DOWN:
-						while valid_pos(cup, figure_pos, current):
-							figure_pos = shifted(figure_pos, (0, 1))
-						figure_pos = shifted(figure_pos, (0, -1))
-					elif event.key == K_LEFT:
-						if valid_pos(cup, shifted(figure_pos, (-1, 0)), current):
-							figure_pos = shifted(figure_pos, (-1, 0))
-					elif event.key == K_RIGHT:
-						if valid_pos(cup, shifted(figure_pos, (1, 0)), current):
-							figure_pos = shifted(figure_pos, (1, 0))
-					elif event.key == K_p:
-						paused = not paused
-
-		if playing and not paused:
-			if pygame.time.get_ticks() - previous_time > (START_SPEED - SPEED_MODIFIER * speed):
-				previous_time = pygame.time.get_ticks()
-				if valid_pos(cup, shifted(figure_pos, (0, 1)), current):
-					figure_pos = shifted(figure_pos, (0, 1))
-
-			if may_be_fixated(cup, figure_pos, current):
-				fixate(current, figure_pos, cup)
-				cup, lines_cleared = clear_filled_rows(cup)
-				score += lines_cleared
-				if score >= SCORE_LEVEL:
-					speed += 1
-					score = 0
-
-				current, figure_pos = next_figure, start_pos
-				if not valid_pos(cup, figure_pos, current):
-					playing = False
-				next_figure = random.choice(figures).clone()
-
+	bool playing = true;
+	bool quit = false;
+	bool paused = false;
+	int speed = 1;
+	int score = 0;
+	Chthon::Point figure_pos = start_pos;
+	Uint32 previous_time = SDL_GetTicks();
+	SDL_Event event;
+	while(!quit) {
 		// Drawing.
-		screen.fill(COLORS["BACK"])
-		screen.blit(cup_surface, cup_rect)
-		shadows = get_shadow(cup, figure_pos, current)
-		for col in shadows:
-			shadow_rect = pygame.Rect(cell_size[0] * col, cup_rect.top, cell_size[0], cup_rect.height)
-			shadow_rect.move_ip(cup_rect.topleft)
-			screen.blit(shadow, shadow_rect)
-		//if playing and not paused: colors; else: draw gray content and figure
-		for row in range(CUP_HEIGHT):
-			for col in range(CUP_WIDTH):
-				if cup[row][col]:
-					cell_rect = pygame.Rect((col * cell_size[0], row * cell_size[1]), cell_size)
-					cell_rect.move_ip(cup_rect.topleft)
-					if not playing:
-						screen.blit(bricks["SHADOW"], cell_rect)
-					elif paused:
-						screen.blit(bricks["FORE"], cell_rect)
-					else:
-						screen.blit(bricks[cup[row][col]], cell_rect)
-		for row in range(Figure.H):
-			for col in range(Figure.W):
-				if current.face()[row][col]:
-					cell_rect = pygame.Rect(((figure_pos[0] + col) * cell_size[0], (figure_pos[1] + row) * cell_size[1]), cell_size)
-					cell_rect.move_ip(cup_rect.topleft)
-					if not playing:
-						screen.blit(bricks["SHADOW"], cell_rect)
-					elif paused:
-						screen.blit(bricks["FORE"], cell_rect)
-					else:
-						screen.blit(bricks[current.color], cell_rect)
-		next_view.fill(COLORS["BACK"])
-		for row in range(Figure.H):
-			for col in range(Figure.W):
-				if next_figure.face()[row][col]:
-					cell_rect = pygame.Rect((col * cell_size[0], row * cell_size[1]), cell_size)
-					if not playing:
-						next_view.blit(bricks["SHADOW"], cell_rect)
-					elif paused:
-						next_view.blit(bricks["FORE"], cell_rect)
-					else:
-						next_view.blit(bricks[next_figure.color], cell_rect)
-		pygame.draw.rect(screen, COLORS["FORE"], cup_rect, 1)
-		screen.blit(next_view, (cup_rect.topright, cell_size))
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, cup_surface, NULL, &cup_rect);
+		std::set<int> shadows = get_shadow(cup, figure_pos, current);
+		for(int col : shadows) {
+			SDL_Rect shadow_rect = {cell_width * col, cup_rect.y, cell_width, cup_rect.h};
+			shadow_rect.x += cup_rect.x;
+			shadow_rect.y += cup_rect.y;
+			SDL_RenderCopy(renderer, shadow, NULL, &shadow_rect);
+		}
+		// If playing and not paused: colors; else: draw gray content and figure.
+		for(int row = 0; row < CUP_HEIGHT; ++row) {
+			for(int col = 0; col < CUP_WIDTH; ++col) {
+				if((unsigned)cup.cell(col, row)) {
+					SDL_Rect cell_rect = {col * cell_width, row * cell_width, cell_width, cell_width};
+					cell_rect.x += cup_rect.x;
+					cell_rect.y += cup_rect.y;
+					if(!playing) {
+						SDL_RenderCopy(renderer, bricks[Color::SHADOW], NULL, &cell_rect);
+					} else if(paused){
+						SDL_RenderCopy(renderer, bricks[Color::FORE], NULL, &cell_rect);
+					} else {
+						SDL_RenderCopy(renderer, bricks[cup.cell(col, row)], NULL, &cell_rect);
+					}
+				}
+			}
+		}
+		for(int row = 0; row < Figure::W; ++row) {
+			for(int col = 0; col < Figure::H; ++col) {
+				if(current.face().cell(col, row)) {
+					SDL_Rect cell_rect = {(figure_pos.x + col) * cell_width, (figure_pos.y + row) * cell_width, cell_width, cell_width};
+					cell_rect.x += cup_rect.x;
+					cell_rect.y += cup_rect.y;
+					if(!playing) {
+						SDL_RenderCopy(renderer, bricks[Color::SHADOW], NULL, &cell_rect);
+					} else if(paused){
+						SDL_RenderCopy(renderer, bricks[Color::FORE], NULL, &cell_rect);
+					} else {
+						SDL_RenderCopy(renderer, bricks[cup.cell(col, row)], NULL, &cell_rect);
+					}
+				}
+			}
+		}
+		SDL_Rect next_view_rect = {cup_rect.x + cup_rect.w, cup_rect.y, cell_width, cell_width};
+		SDL_RenderFillRect(renderer, &next_view_rect);
+		for(int row = 0; row < Figure::W; ++row) {
+			for(int col = 0; col < Figure::H; ++col) {
+				if(next_figure.face().cell(col, row)) {
+					SDL_Rect cell_rect = {col * cell_width, row * cell_width, cell_width, cell_width};
+					cell_rect.x += next_view_rect.x;
+					cell_rect.y += next_view_rect.y;
+					if(!playing) {
+						SDL_RenderCopy(renderer, bricks[Color::SHADOW], NULL, &cell_rect);
+					} else if(paused){
+						SDL_RenderCopy(renderer, bricks[Color::FORE], NULL, &cell_rect);
+					} else {
+						SDL_RenderCopy(renderer, bricks[cup.cell(col, row)], NULL, &cell_rect);
+					}
+				}
+			}
+		}
+		SDL_RenderDrawRect(renderer, &cup_rect);
 
-		pygame.display.flip()
+		SDL_RenderPresent(renderer);
 
+		while(SDL_PollEvent(&event)) {
+			if(event.type == SDL_KEYDOWN) {
+				int event_key = event.key.keysym.sym;
+				if(event_key == SDLK_q) {
+					quit = true;
+				} else if(playing) {
+					if(event_key == SDLK_UP) {
+						Figure rotated = current;
+						rotated.rotate();
+						if(valid_pos(cup, figure_pos, rotated)) {
+							current = rotated;
+						}
+					} else if(event_key == SDLK_DOWN) {
+						while(valid_pos(cup, figure_pos, current)) {
+							figure_pos = shifted(figure_pos, Chthon::Point(0, 1));
+						}
+						figure_pos = shifted(figure_pos, Chthon::Point(0, -1));
+					} else if(event_key == SDLK_LEFT) {
+						if(valid_pos(cup, shifted(figure_pos, Chthon::Point(-1, 0)), current)) {
+							figure_pos = shifted(figure_pos, Chthon::Point(-1, 0));
+						}
+					} else if(event_key == SDLK_RIGHT) {
+						if(valid_pos(cup, shifted(figure_pos, Chthon::Point(1, 0)), current)) {
+							figure_pos = shifted(figure_pos, Chthon::Point(1, 0));
+						}
+					} else if(event_key == SDLK_p) {
+						paused = !paused;
+					}
+				}
+			} else if(event.type == SDL_QUIT) {
+				quit = true;
+			}
+		}
+
+		if(playing && !paused) {
+			Uint32 current_ticks = SDL_GetTicks();
+			if(current_ticks - previous_time > (START_SPEED - SPEED_MODIFIER * speed)) {
+				previous_time = current_ticks;
+				if(valid_pos(cup, shifted(figure_pos, Chthon::Point(0, 1)), current)) {
+					figure_pos = shifted(figure_pos, Chthon::Point(0, 1));
+				}
+			}
+
+			if(may_be_fixated(cup, figure_pos, current)) {
+				fixate(current, figure_pos, cup);
+				int lines_cleared = clear_filled_rows(cup);
+				score += lines_cleared;
+				if(score >= SCORE_LEVEL) {
+					speed += 1;
+					score = 0;
+				}
+
+				current = next_figure;
+				figure_pos = start_pos;
+				if(!valid_pos(cup, figure_pos, current)) {
+					playing = false;
+				}
+				next_figure = figures[rand() % figures.size()];
+			}
+		}
+	}
+	return 0;
+}

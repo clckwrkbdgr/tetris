@@ -7,10 +7,17 @@
 #include <SDL2/SDL.h>
 #include <chthon2/map.h>
 #include <chthon2/pixmap.h>
+#include <chthon2/util.h>
 #include <chthon2/log.h>
 #include <map>
 #include <set>
 #include <vector>
+
+#define char const char
+namespace Sprites {
+#include "neko.xpm"
+}
+#undef char
 
 enum class Color {
 	BACK = 0,
@@ -24,6 +31,44 @@ enum class Color {
 	T = 0xff00ff,
 	Z = 0xff0000
 };
+
+SDL_Texture * load_xpm(SDL_Renderer * renderer, const char ** xpm, int size, Color color)
+{
+	SDL_Texture * result = 0;
+	try {
+		std::vector<std::string> xpm_lines(xpm, xpm + size);
+		Chthon::Pixmap pixmap;
+		pixmap.load(xpm_lines);
+		SDL_Surface * surface = SDL_CreateRGBSurface(SDL_SWSURFACE,
+				pixmap.pixels.width(), pixmap.pixels.height(), 32,
+				0x00ff0000,
+				0x0000ff00,
+				0x000000ff,
+				0xff000000
+				);
+		if(SDL_MUSTLOCK(surface)) {
+			SDL_LockSurface(surface);
+		}
+		for(unsigned x = 0; x < pixmap.pixels.width(); ++x) {
+			for(unsigned y = 0; y < pixmap.pixels.height(); ++y) {
+				Uint8 * pixel = (Uint8*)surface->pixels;
+				pixel += (y * surface->pitch) + (x * sizeof(Uint32));
+				Uint32 c = pixmap.palette[(pixmap.pixels.cell(x, y))];
+				*((Uint32*)pixel) = c & (0xff000000 | (unsigned)color);
+			}
+		}
+		if(SDL_MUSTLOCK(surface)) {
+			SDL_UnlockSurface(surface);
+		}
+		result = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, pixmap.pixels.width(), pixmap.pixels.height());
+		SDL_UpdateTexture(result, 0, surface->pixels, surface->pitch);
+		SDL_SetTextureBlendMode(result, SDL_BLENDMODE_BLEND);
+	} catch(const Chthon::Pixmap::Exception & e) {
+		std::cerr << e.what << std::endl;
+	}
+	return result;
+}
+
 
 enum {
 	CUP_WIDTH = 10,
@@ -221,13 +266,9 @@ int main()
 	SDL_Texture * shadow = SDL_CreateTextureFromSurface(renderer, s);
 
 	std::map<Color, SDL_Texture*> bricks;
-	std::vector<Color> colors = { Color::I, Color::J, Color::L, Color::O, Color::S, Color::T, Color::Z, Color::BACK, Color::FORE, Color::SHADOW };
-	for(Color color : colors) {
-		s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width, cell_width, 32, 0, 0, 0, 0); //Creating the surface.
-		SDL_FillRect(s, NULL, (unsigned)Color::BACK);
-		SDL_Rect r = {1, 1, s->w - 1, s->h - 1};
-		SDL_FillRect(s, &r, (unsigned)color);
-		bricks[color] = SDL_CreateTextureFromSurface(renderer, s);
+	for(Color color : { Color::BACK, Color::FORE, Color::SHADOW, Color::I, Color::J, Color::L, Color::O, Color::S, Color::T, Color::Z }) {
+		bricks[color] = load_xpm(renderer, Sprites::neko_xpm, Chthon::size_of_array(Sprites::neko_xpm), color);
+
 	}
 	s = SDL_CreateRGBSurface(SDL_SWSURFACE, cell_width * Figure::W, cell_width * Figure::H, 32, 0, 0, 0, 0); //Creating the surface.
 	SDL_Texture * next_view = SDL_CreateTextureFromSurface(renderer, s);

@@ -15,11 +15,10 @@
 #include <ctime>
 #include <cstdlib>
 
-#define char const char
 namespace Sprites {
+const
 #include "neko.xpm"
 }
-#undef char
 
 enum class Color {
 	BACK = 0,

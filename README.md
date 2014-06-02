@@ -8,3 +8,12 @@ Also when lines are erased, there will be parts of original figure left (1, 2, 3
 Features: pause, showing next block, colors (usual tetris colors), shadow (shows when block will be placed when its dropped).
 
 Speeding up after each level, also need some score counting (different score for different counts of rows).
+
+## Installation
+
+Requires:
+
+* SDL2
+* [libchton](https://github.com/umi0451/libchthon)
+
+Run `make` from project directory and run `tetris`.

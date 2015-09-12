@@ -16,6 +16,8 @@ tmp/%.o: %.cpp
 	@echo Compiling $<...
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
+tmp/tetris.o: neko.xpm
+
 .PHONY: clean
 
 clean:

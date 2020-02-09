@@ -1,3 +1,5 @@
+VERSION=$(shell git tag | sed 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\)/\1/' | sort -nt . | tail -1)
+
 BIN = tetris
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(addprefix tmp/,$(SOURCES:.cpp=.o))
@@ -11,6 +13,16 @@ run: $(BIN)
 
 $(BIN): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ $(LIBS) -o $@
+
+deb: $(BIN)
+	@debpackage.py \
+		catris \
+		-v $(VERSION) \
+		--maintainer 'umi041 <umi0451@gmail.com>' \
+		--bin $(BIN) \
+		--build-dir tmp \
+		--dest-dir . \
+		--description 'Catris.'
 
 tmp/%.o: %.cpp
 	@echo Compiling $<...
